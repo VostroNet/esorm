@@ -1,6 +1,6 @@
 import debug from "debug";
 
-const packageName = "inflx";
+const packageName = "esorm";
 
 export default function(prefix = "") {
   let err = debug(`${packageName}:${prefix}:error`);

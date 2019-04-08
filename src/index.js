@@ -2,12 +2,16 @@ import {Client} from "@elastic/elasticsearch";
 import logger from "./logger";
 import Model from "./model";
 import waterfall from "./waterfall";
-
+import {processElasticResponse} from "./utils";
 import * as types from "./types";
 
 const log = logger("index");
 
 export const Types = types;
+
+jest.setTimeout(1000000); // debug purposes
+
+
 
 export default class EsORM {
   constructor(config) {
@@ -15,32 +19,42 @@ export default class EsORM {
     this.config = config;
   }
   async createClient() {
-    log.debug(`creating client ${this.config}`);
+    log.debug(`creating client`, this.config);
     this.client = new Client(this.config);
-  } 
+  }
   async getClient() {
     if (!this.client) {
       await this.createClient();
     }
     return this.client;
   }
-  async sync() {
+  async sync(options = {}) {
 
     const client = await this.getClient();
     return waterfall(Object.keys(this.models), async(modelName) => {
       const model = this.models[modelName];
+      const indexName = model.indexName;
       const indexExists = await client.indices.exists({
-        index: model.indexName,
-      });
-      if (!indexExists) {
+        index: indexName,
+      }).then(processElasticResponse);
+      if (indexExists && options.force) {
+        await client.indices.delete({
+          index: indexName,
+        }).then(processElasticResponse);
+      }
+      if (!indexExists || options.force) {
         await client.indices.create({
-          index: model.indexName,
-          mappings: model.options.mappings || {
-            "_doc": {
-              properties: model.fields,
-            }
-          }
-        });
+          index: indexName,
+          // includeTypeName: false,
+          body: {
+            mappings: {
+              "_doc": {
+                "properties": model.schema.mappings,
+              },
+            },
+            settings: model.schema.settings,
+          },
+        }).then(processElasticResponse);
       }
     });
   }

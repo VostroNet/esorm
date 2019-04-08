@@ -3,5 +3,10 @@
     // The number of spaces a tab is equal to.
     "editor.tabSize": 2,
     // Insert spaces when pressing Tab.
-    "editor.insertSpaces": true
+    "editor.insertSpaces": true,
+    "workbench.colorCustomizations": {
+        "activityBar.background": "#4B2212",
+        "titleBar.activeBackground": "#693019",
+        "titleBar.activeForeground": "#FDF9F7"
+    }
 }

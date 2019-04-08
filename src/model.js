@@ -3,6 +3,8 @@ import waterfall from "./waterfall";
 
 import * as Types from "./types";
 
+import {processElasticResponse} from "./utils";
+
 export default class Model {
   constructor(values) {
     Object.assign(this, values);
@@ -16,82 +18,80 @@ export default class Model {
       options.modelName = this.name;
     }
     this.modelName = options.modelName;
-    this.indexName = options.indexName;
+    this.indexName = (options.indexName || this.modelName || this.name).toLowerCase();
     this.typeName = options.typeName;
     this.schema = schema;
     this.hooks = schema.hooks;
     this.options = options;
   }
   static async findAll(options) {
-    let opts = await runHook(this, "beforeFindInitial", options, undefined, options);
-    const ql = this.createQueryString(opts);
-    await runHook(this, "beforeFind", options, undefined, opts, ql);
-    // ql.addField.apply(ql, Object.keys(this.schema.fields));
-    // ql.addField.apply(ql, this.schema.tags);
-    const response = await this.esorm.search({
+    let opts = await runHook(this, "beforeFind", options, undefined, options);
+    const client = await this.esorm.getClient();
+    const response = await client.search({
       index: this.indexName,
-      type: this.typeName,
-      body: options.where
-    });
+      body: {
+        query: options.query,
+        from: options.from,
+        size: options.size,
+        sort: options.sort,
+        aggs: options.aggs,
+      },
+    }).then(processElasticResponse);
     let models;
     if (!options.raw) {
-      models = response.hit.hits.map((r) => new this(r));
+      models = response.hits.hits.map((hit) =>{
+        return new this(Object.assign({
+          id: hit._id, //eslint-disable-line
+          _meta: {
+            score: hit._score,//eslint-disable-line
+            type: hit._type,//eslint-disable-line
+          }
+        }, hit._source));//eslint-disable-line
+      });
     } else {
-      models = response;
+      models = response.hits.hits;
     }
-    return runHook(this, "afterFind", options, undefined, models, opts);
+    return runHook(this, "afterFind", options, undefined, {
+      _meta: {
+        shards: response._shards,//eslint-disable-line
+        maxScore: response.hits.maxScore,
+        total: response.hits.total,
+        timedOut: response.hits.timed_out,
+        took: response.hits.took,
+      },
+      models,
+    }, opts);
   }
 
   static async count(options) {
-    let opts = await runHook(this, "beforeCountInitial", options, undefined, options);
-    const ql = this.createQueryString(opts);
-    await runHook(this, "beforeCount", options, undefined, options, ql);
-    ql.addFunction("count", Object.keys(this.schema.fields)[0]);
-    ql.subQuery();
-    ql.addFunction("sum", "count");
-    await runHook(this, "beforeCountArgsSet", options, undefined, options, ql);
-    const results = await this.inflx.query(ql.toSelect(), {
-      precision: options.precision,
-      retentionPolicy: options.retentionPolicy,
-      database: options.database,
-    });
-    let fullCount = 0;
-    if (results.length > 0) {
-      fullCount = results[0].sum;
-    }
-    return runHook(this, "afterCount", options, undefined, fullCount, opts);
+    let opts = await runHook(this, "beforeCount", options, undefined, options);
+    const client = await this.esorm.getClient();
+    const response = await client.count({
+      index: this.indexName,
+      body: opts,
+    }).then(processElasticResponse);
+    return runHook(this, "afterCount", options, undefined, response.count, opts);
   }
   static async createBulk(records = [], options) {
     let r = await runHook(this, "beforeCreateBulk", options, undefined, records, options = {});
-    const conn = this.inflx.getConnection();
-    const newData = r.map((record) => {
-      return {
-        measurement: this.schema.measurement,
-        tags: this.schema.tags.reduce((o, tag) => {
-          if (record[tag] !== undefined && record[tag] !== "") {
-            o[tag] = record[tag];
-          }
-          return o;
-        }, {}),
-        fields: Object.keys(this.schema.fields).reduce((o, f) => {
-          if (record[f] !== undefined && record[f] !== "") {
-            o[f] = record[f];
-          }
-          return o;
-        }, {}),
-        timestamp: record.time,
-      };
-    });
-    try {
-      await conn.writePoints(newData, {
-        database: options.database,
-        precision: options.precision,
-        retentionPolicy: options.retentionPolicy,
+    const client = await this.esorm.getClient();
+    //TODO: move this to a running stream/queue?
+    const newData = r.reduce((arr, val) => {
+      arr.push({
+        "index": {
+          "_index": this.indexName,
+          "_type": "_doc",
+        },
       });
-    } catch(err) {
-      console.log("influx error", err);
-    }
-    return runHook(this, "afterCreateBulk", options, undefined, records, options);
+      arr.push(val);
+      return arr;
+    }, []);
+    let result;
+    result = await client.bulk({
+      refresh: true,
+      body: newData,
+    }).then(processElasticResponse);
+    return runHook(this, "afterCreateBulk", options, undefined, result.items.map((i) => i.index), options);
   }
 }
 
