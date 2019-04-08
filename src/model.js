@@ -62,7 +62,15 @@ export default class Model {
       models,
     }, opts);
   }
-
+  static async query(options) {
+    let opts = await runHook(this, "beforeQuery", options, undefined, options);
+    const client = await this.esorm.getClient();
+    const response = await client.search({
+      index: this.indexName,
+      body: options,
+    }).then(processElasticResponse);
+    return runHook(this, "afterQuery", options, undefined, response, opts);
+  }
   static async count(options) {
     let opts = await runHook(this, "beforeCount", options, undefined, options);
     const client = await this.esorm.getClient();

@@ -9,8 +9,6 @@ const log = logger("index");
 
 export const Types = types;
 
-jest.setTimeout(1000000); // debug purposes
-
 
 
 export default class EsORM {
