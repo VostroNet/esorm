@@ -30,15 +30,15 @@ export default class Model {
     const response = await client.search({
       index: this.indexName,
       body: {
-        query: options.query,
-        from: options.from,
-        size: options.size,
-        sort: options.sort,
-        aggs: options.aggs,
+        query: opts.query,
+        from: opts.from,
+        size: opts.size,
+        sort: opts.sort,
+        aggs: opts.aggs,
       },
     }).then(processElasticResponse);
     let models;
-    if (!options.raw) {
+    if (!opts.raw) {
       models = response.hits.hits.map((hit) =>{
         return new this(Object.assign({
           id: hit._id, //eslint-disable-line
@@ -67,18 +67,23 @@ export default class Model {
     const client = await this.esorm.getClient();
     const response = await client.search({
       index: this.indexName,
-      body: options,
+      body: opts,
     }).then(processElasticResponse);
-    return runHook(this, "afterQuery", options, undefined, response, opts);
+    return runHook(this, "afterQuery", opts, undefined, response, opts);
   }
-  static async count(options) {
+  static async count(options = {}) {
     let opts = await runHook(this, "beforeCount", options, undefined, options);
     const client = await this.esorm.getClient();
     const response = await client.count({
       index: this.indexName,
-      body: opts,
+      body: {
+        query: opts.query,
+        from: opts.from,
+        sort: opts.sort,
+        aggs: opts.aggs,
+      }
     }).then(processElasticResponse);
-    return runHook(this, "afterCount", options, undefined, response.count, opts);
+    return runHook(this, "afterCount", opts, undefined, response.count, opts);
   }
   static async createBulk(records = [], options) {
     let r = await runHook(this, "beforeCreateBulk", options, undefined, records, options = {});

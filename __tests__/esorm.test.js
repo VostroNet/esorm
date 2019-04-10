@@ -3,7 +3,7 @@ import EsORM, {Types} from "../src/index";
 const testModelSchema = {
   mappings: {
     name: {
-      type: Types.text,
+      type: Types.Text,
     },
   },
 };
