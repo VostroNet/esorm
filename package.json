@@ -34,7 +34,7 @@
     "regenerator-runtime": "^0.13.1"
   },
   "dependencies": {
-    "@elastic/elasticsearch": "^6.7.0-rc.1",
+    "@elastic/elasticsearch": "^7.0.0-rc1",
     "bluebird": "^3.5.4",
     "core-js": "3",
     "debug": "^4.1.0"

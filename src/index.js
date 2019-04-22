@@ -43,7 +43,7 @@ export default class EsORM {
       if (!indexExists || options.force) {
         await client.indices.create({
           index: indexName,
-          // includeTypeName: false,
+          include_type_name: true, //eslint-disable-line
           body: {
             mappings: {
               "_doc": {
