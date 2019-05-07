@@ -27,9 +27,10 @@ gulp.task("compile:publish", gulp.series("lint", () => {
         [
           "@babel/preset-env", {
             "targets": {
-              "node": "10.14.1",
+              "node": "10.15.3",
             },
             "useBuiltIns": "usage",
+            "corejs": "3",
           },
         ]
       ],
@@ -55,7 +56,8 @@ gulp.task("compile", gulp.series("lint", () => {
             "targets": {
               "node": "current",
             },
-            "useBuiltIns": "usage",
+            "useBuiltIns": "entry",
+            "corejs": "3",
           }
         ],
       ],
@@ -67,7 +69,7 @@ gulp.task("compile", gulp.series("lint", () => {
     }))
     .pipe(sourcemaps.write(".", {
       includeContent: false,
-      sourceRoot: path.resolve(__dirname, "./src/"),
+      sourceRoot: process.env.NODE_ENV === "production" ? "../src/" : path.resolve(__dirname, "./src/")
     }))
     .pipe(gulp.dest("lib/"));
 }));
