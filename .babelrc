@@ -7,7 +7,6 @@
         },
         "corejs": "3",
         "useBuiltIns": "usage",
-        
       }
     ]
   ],

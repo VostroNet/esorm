@@ -8,7 +8,7 @@ const testModelSchema = {
   },
 };
 const nodeConfig = {
-  nodes: ["http://localhost:9200"]
+  nodes: ["http://localhost:9200"],
 };
 
 test("basic sync", async() => {

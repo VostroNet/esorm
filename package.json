@@ -1,6 +1,6 @@
 {
   "name": "@vostro/esorm",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "",
   "main": "lib/index.js",
   "scripts": {
@@ -27,7 +27,7 @@
     "eslint-plugin-jest": "^22.5.1",
     "gulp": "^4.0.2",
     "gulp-babel": "^8.0.0",
-    "gulp-eslint": "^5.0.0",
+    "gulp-eslint": "^6.0.0",
     "gulp-jsdoc3": "^2.0.0",
     "gulp-sourcemaps": "^2.6.5",
     "jest": "^24.8.0",
