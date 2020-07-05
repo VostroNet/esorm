@@ -16,17 +16,17 @@ export default class EsORM {
     this.models = {};
     this.config = config;
   }
-  async createClient() {
+  createClient = async() => {
     log.debug(`creating client`, this.config);
     this.client = new Client(this.config);
   }
-  async getClient() {
+  getClient = async() => {
     if (!this.client) {
       await this.createClient();
     }
     return this.client;
   }
-  async sync(options = {}) {
+  sync = async(options = {}) => {
 
     const client = await this.getClient();
     return waterfall(Object.keys(this.models), async(modelName) => {
@@ -54,9 +54,26 @@ export default class EsORM {
           },
         }).then(processElasticResponse);
       }
+      if (model.schema.rollups) {
+        await waterfall(Object.keys(model.schema.rollups).map(async(rollupName) => {
+          const {body: {jobs}} = await client.rollup.getJobs({
+            id: `${indexName}-${rollupName}`,
+          });
+          if (jobs.length === 0) {
+            try {
+              await client.rollup.putJob({
+                id: rollupName,
+                body: model.schema.rollups[rollupName],
+              });
+            } catch(err) {
+              console.log("err", err);
+            }
+          }
+        }));
+      }
     });
   }
-  define(modelName, schema, options = {}) {
+  define = (modelName, schema, options = {}) => {
     options.modelName = modelName;
     options.esorm = this;
     const model = class extends Model {};
@@ -64,7 +81,7 @@ export default class EsORM {
     this.models[modelName] = model;
     return model;
   }
-  search(query) {
+  search = (query) => {
     const client = this.getClient();
     log.info("query", query);
     return client.search(query);
