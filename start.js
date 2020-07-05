@@ -1,10 +1,11 @@
-import EsORM, {Types} from "../src/index";
+require("@babel/register");
+const {Types} = require("./src/index");
+const EsORM = require("./src/index").default;
 
 const testModelSchema = {
   rollups: {
     day: {
       cron: "0 8 * * *",
-      page_size: 1000, //eslint-disable-line
       groups: {
         "date_histogram": {
           "field": "timestamp",
@@ -28,10 +29,9 @@ const nodeConfig = {
   nodes: ["http://localhost:9200"],
 };
 
-test("rollup", async() => {
+(async() => {
   const instance = new EsORM(nodeConfig);
   instance.define("TestModel", testModelSchema, {});
   await instance.sync();
 
-  expect(1).toBe(0);
-});
+})();

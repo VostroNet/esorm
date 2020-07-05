@@ -63,7 +63,10 @@ export default class EsORM {
             try {
               await client.rollup.putJob({
                 id: rollupName,
-                body: model.schema.rollups[rollupName],
+                body: Object.assign({
+                  index_pattern: `${indexName}*`, //eslint-disable-line
+                  rollup_index: `${indexName}_rollup`, //eslint-disable-line
+                }, model.schema.rollups[rollupName]),
               });
             } catch(err) {
               console.log("err", err);
