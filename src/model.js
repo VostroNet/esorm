@@ -18,7 +18,8 @@ export default class Model {
       options.modelName = this.name;
     }
     this.modelName = options.modelName;
-    this.indexName = (options.indexName || this.modelName || this.name).toLowerCase();
+    let indexPrefix = this.esorm.config.indexPrefix || "";
+    this.indexName = `${indexPrefix}${(options.indexName || this.modelName || this.name)}`.toLowerCase();
     this.typeName = options.typeName;
     this.schema = schema;
     this.hooks = schema.hooks;

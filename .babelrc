@@ -6,7 +6,7 @@
           "node": "current"
         },
         "corejs": "3",
-        "useBuiltIns": "usage"
+        "useBuiltIns": "usage",
       }
     ]
   ],
