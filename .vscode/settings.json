@@ -8,5 +8,6 @@
         "activityBar.background": "#4B2212",
         "titleBar.activeBackground": "#693019",
         "titleBar.activeForeground": "#FDF9F7"
-    }
+    },
+    "jira-plugin.workingProject": ""
 }

@@ -32,13 +32,12 @@ gulp.task("compile:publish", gulp.series("lint", () => {
             "useBuiltIns": "usage",
             "corejs": "3",
           },
-        ]
+        ],
       ],
       "plugins": [
         "@babel/plugin-proposal-object-rest-spread",
         "@babel/plugin-proposal-class-properties",
-        "babel-plugin-autobind-class-methods",
-      ]
+      ],
     }))
     .pipe(sourcemaps.write(".", {
       includeContent: false,
@@ -58,14 +57,13 @@ gulp.task("compile", gulp.series("lint", () => {
             },
             "useBuiltIns": "entry",
             "corejs": "3",
-          }
+          },
         ],
       ],
       "plugins": [
         "@babel/plugin-proposal-object-rest-spread",
         "@babel/plugin-proposal-class-properties",
-        "babel-plugin-autobind-class-methods",
-      ]
+      ],
     }))
     .pipe(sourcemaps.write(".", {
       includeContent: false,

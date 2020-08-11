@@ -13,30 +13,32 @@
     "babel-core": "^7.0.0-bridge.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.5.5",
-    "@babel/plugin-proposal-class-properties": "^7.5.5",
-    "@babel/plugin-proposal-object-rest-spread": "^7.5.5",
-    "@babel/preset-env": "^7.5.5",
-    "@babel/runtime": "^7.5.5",
+    "@babel/core": "^7.11.1",
+    "@babel/plugin-proposal-class-properties": "^7.10.4",
+    "@babel/plugin-proposal-object-rest-spread": "^7.11.0",
+    "@babel/preset-env": "^7.11.0",
+    "@babel/runtime": "^7.11.1",
     "babel-core": "^7.0.0-bridge.0",
-    "babel-eslint": "^10.0.3",
-    "babel-jest": "^24.9.0",
+    "babel-eslint": "^10.1.0",
+    "babel-jest": "^26.2.2",
     "babel-plugin-autobind-class-methods": "^5.0.1",
     "del": "^5.1.0",
-    "eslint": "^6.3.0",
-    "eslint-plugin-jest": "^22.16.0",
+    "eslint": "^7.6.0",
+    "eslint-plugin-jest": "^23.20.0",
+    "faker": "^4.1.0",
     "gulp": "^4.0.2",
     "gulp-babel": "^8.0.0",
     "gulp-eslint": "^6.0.0",
-    "gulp-jsdoc3": "^2.0.0",
+    "gulp-jsdoc3": "^3.0.0",
     "gulp-sourcemaps": "^2.6.5",
-    "jest": "^24.9.0",
-    "regenerator-runtime": "^0.13.3"
+    "jest": "^26.2.2",
+    "regenerator-runtime": "^0.13.7"
   },
   "dependencies": {
-    "@elastic/elasticsearch": "^7.3.0",
-    "bluebird": "^3.5.5",
-    "core-js": "^3.2.1",
+    "@babel/register": "^7.10.5",
+    "@elastic/elasticsearch": "^7.8.0",
+    "core-js": "^3.6.5",
+    "moment": "^2.27.0",
     "debug": "^4.1.1"
   }
 }

@@ -12,9 +12,6 @@
   ],
   "plugins": [
     "@babel/plugin-proposal-object-rest-spread",
-    "@babel/plugin-proposal-class-properties",
-    "babel-plugin-autobind-class-methods"
-  ],
-  "sourceMaps": "inline",
-  "retainLines": true
+    "@babel/plugin-proposal-class-properties"
+  ]
 }
