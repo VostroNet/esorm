@@ -8,7 +8,7 @@ const testModelSchema = {
   },
 };
 const nodeConfig = {
-  nodes: ["http://localhost:9200"],
+  nodes: ["http://10.97.1.100:9200"],
 };
 
 test("basic sync", async() => {
@@ -31,7 +31,7 @@ test("create bulk", async() => {
     {name: "old ben"},
   ]);
 
-  expect(indexes.length).toBe(3);
+  expect(indexes).toHaveLength(3);
 });
 
 test("count", async() => {
@@ -70,5 +70,5 @@ test("findAll", async() => {
     },
   });
 
-  expect(results.models.length).toBe(1);
+  expect(results.models).toHaveLength(1);
 });

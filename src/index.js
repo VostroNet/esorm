@@ -2,14 +2,12 @@ import {Client} from "@elastic/elasticsearch";
 import logger from "./logger";
 import Model from "./model";
 import waterfall from "./waterfall";
-import {processElasticResponse} from "./utils";
 import * as types from "./types";
+import { processElasticResponse } from "./utils";
 
 const log = logger("index");
 
 export const Types = types;
-
-
 
 export default class EsORM {
   constructor(config) {
@@ -27,55 +25,24 @@ export default class EsORM {
     return this.client;
   }
   sync = async(options = {}) => {
-
-    const client = await this.getClient();
-    return waterfall(Object.keys(this.models), async(modelName) => {
-      const model = this.models[modelName];
-      const indexName = model.indexName;
-      const indexExists = await client.indices.exists({
-        index: indexName,
-      }).then(processElasticResponse);
-      if (indexExists && options.force) {
-        await client.indices.delete({
-          index: indexName,
-        }).then(processElasticResponse);
-      }
-      if (!indexExists || options.force) {
-        await client.indices.create({
-          index: indexName,
-          include_type_name: true, //eslint-disable-line
-          body: {
-            mappings: {
-              "_doc": {
-                "properties": model.schema.mappings,
-              },
-            },
-            settings: model.schema.settings,
-          },
-        }).then(processElasticResponse);
-      }
-      if (model.schema.rollups) {
-        await waterfall(Object.keys(model.schema.rollups).map(async(rollupName) => {
-          const {body: {jobs}} = await client.rollup.getJobs({
-            id: `${indexName}-${rollupName}`,
-          });
-          if (jobs.length === 0) {
-            try {
-              await client.rollup.putJob({
-                id: rollupName,
-                body: Object.assign({
-                  index_pattern: `${indexName}*`, //eslint-disable-line
-                  rollup_index: `${indexName}_rollup`, //eslint-disable-line
-                }, model.schema.rollups[rollupName]),
-              });
-            } catch(err) {
-              console.log("err", err);
-            }
-          }
-        }));
-      }
-    });
+    return waterfall(Object.keys(this.models), async(modelName) => this.models[modelName].sync(options));
   }
+  findIndex = async(search) => {
+    const client = await this.getClient();
+    try {
+      const results = await client.cat.indices({
+        index: search,
+        h: "i",
+      }).then(processElasticResponse);
+      return results.split("\n").filter((f) => f !== "" && !(!f));
+    } catch (err) {
+      if (err.statusCode === 404) {
+        return [];
+      }
+      throw err;
+    }
+  }
+
   define = (modelName, schema, options = {}) => {
     options.modelName = modelName;
     options.esorm = this;
@@ -84,8 +51,8 @@ export default class EsORM {
     this.models[modelName] = model;
     return model;
   }
-  search = (query) => {
-    const client = this.getClient();
+  search = async(query) => {
+    const client = await this.getClient();
     log.info("query", query);
     return client.search(query);
   }

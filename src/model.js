@@ -1,7 +1,8 @@
 
 import waterfall from "./waterfall";
+import moment from "moment";
 
-import * as Types from "./types";
+// import * as Types from "./types";
 
 import {processElasticResponse} from "./utils";
 
@@ -25,19 +26,95 @@ export default class Model {
     this.hooks = schema.hooks;
     this.options = options;
   }
+  static getQueryIndex() {
+    return `${this.indexName}*`;
+  }
+  static async sync(options) {
+    const client = await this.esorm.getClient();
+    const indexesFound = await this.esorm.findIndex(`${this.indexName}*`);
+    if (indexesFound.length > 0 && options.force) {
+      await waterfall(indexesFound, (index) => {
+        return client.indices.delete({
+          index,
+        }).then(processElasticResponse);
+      });
+    }
+
+    const writeIndexName = await this.getWriteIndexName();
+    await this.testWriteIndex(writeIndexName);
+
+    if (this.schema.rollups) {
+      this.rollups = await waterfall(Object.keys(this.schema.rollups), async(rollupName, r) => {
+        const rollupIndexName = `rollup_${this.indexName}_${rollupName}`.toLowerCase();
+        if (options.force) {
+          let indexExists = await client.indices.exists({
+            index: rollupIndexName,
+          }).then(processElasticResponse);
+          if (indexExists && options.force) {
+            await client.indices.delete({
+              index: rollupIndexName,
+            }).then(processElasticResponse);
+          }
+        }
+        await waterfall(Object.keys(this.schema.rollups[rollupName]), async(jobName) => {
+          const jobId = `${rollupName}_${jobName}`.toLowerCase();
+          const jobConfig = this.schema.rollups[rollupName][jobName];
+          const {jobs} = await client.rollup.getJobs({
+            id: jobId,
+          }).then(processElasticResponse);
+          let resetJob = false;
+          if (jobs.length > 0 && options.force) {
+            await client.rollup.stopJob({
+              id: jobId,
+            }).then(processElasticResponse);
+            await client.rollup.deleteJob({
+              id: jobId,
+            }).then(processElasticResponse);
+            resetJob = true;
+          }
+          if (resetJob || jobs.length === 0) {
+            await client.rollup.putJob({
+              id: jobId,
+              body: Object.assign({
+                index_pattern: `${this.indexName}*`, //eslint-disable-line
+                rollup_index: rollupIndexName, //eslint-disable-line
+              }, jobConfig),
+            }).then(processElasticResponse);
+            await client.rollup.startJob({
+              id: jobId,
+            }).then(processElasticResponse);
+          }
+        });
+
+        r[rollupName] = rollupIndexName;
+        return r;
+
+      }, {});
+    }
+  }
+
+  static async internalSearch(options) {
+    const client = await this.esorm.getClient();
+    if (this.rollups && !options.queryMainIndex) {
+      return client.rollup.rollup_search(options)
+        .then(processElasticResponse);
+    } else {
+      return client.search(options)
+        .then(processElasticResponse);
+    }
+  }
   static async findAll(options) {
     let opts = await runHook(this, "beforeFind", options, undefined, options);
-    const client = await this.esorm.getClient();
-    const response = await client.search({
-      index: this.indexName,
+    const response = await this.internalSearch({
+      index: this.getQueryIndex(),
       body: {
         query: opts.query,
         from: opts.from,
         size: opts.size,
         sort: opts.sort,
-        aggs: opts.aggs,
+        aggs: opts.aggs || opts.aggregations,
       },
-    }).then(processElasticResponse);
+    });
     let models;
     if (!opts.raw) {
       models = response.hits.hits.map((hit) =>{
@@ -46,7 +123,7 @@ export default class Model {
           _meta: {
             score: hit._score,//eslint-disable-line
             type: hit._type,//eslint-disable-line
-          }
+          },
         }, hit._source));//eslint-disable-line
       });
     } else {
@@ -65,35 +142,64 @@ export default class Model {
   }
   static async query(options) {
     let opts = await runHook(this, "beforeQuery", options, undefined, options);
-    const client = await this.esorm.getClient();
-    const response = await client.search({
-      index: this.indexName,
+    const response = await this.internalSearch({
+      index: this.getQueryIndex(),
       body: opts,
-    }).then(processElasticResponse);
+    });
     return runHook(this, "afterQuery", opts, undefined, response, opts);
   }
   static async count(options = {}) {
     let opts = await runHook(this, "beforeCount", options, undefined, options);
     const client = await this.esorm.getClient();
     const response = await client.count({
-      index: this.indexName,
+      index: this.getQueryIndex(),
       body: {
         query: opts.query,
         from: opts.from,
         sort: opts.sort,
         aggs: opts.aggs,
-      }
+      },
     }).then(processElasticResponse);
     return runHook(this, "afterCount", opts, undefined, response.count, opts);
   }
+  static getWriteIndexName() {
+    if (this.schema.rotateIndex) {
+      return `${this.indexName}-${moment().format(this.schema.indexFormat || "YYYYMMDD")}`;
+    } else {
+      return `${this.indexName}`;
+    }
+  }
+  static async testWriteIndex(writeIndexName) {
+    if (this.currentWriteIndex !== writeIndexName) {
+      const client = await this.esorm.getClient();
+      const indexes = await this.esorm.findIndex(writeIndexName);
+      if (indexes.length === 0) {
+        await client.indices.create({
+          index: writeIndexName,
+          include_type_name: true, //eslint-disable-line
+          body: {
+            mappings: {
+              "_doc": {
+                "properties": this.schema.mappings,
+              },
+            },
+            settings: this.schema.settings,
+          },
+        }).then(processElasticResponse);
+      }
+      this.currentWriteIndex = writeIndexName;
+    }
+  }
   static async createBulk(records = [], options) {
     let r = await runHook(this, "beforeCreateBulk", options, undefined, records, options = {});
-    const client = await this.esorm.getClient();
+
+    const writeIndexName = this.getWriteIndexName();
+    await this.testWriteIndex(writeIndexName);
     //TODO: move this to a running stream/queue?
     const newData = r.reduce((arr, val) => {
       arr.push({
         "index": {
-          "_index": this.indexName,
+          "_index": writeIndexName,
           "_type": "_doc",
         },
       });
@@ -101,6 +207,7 @@ export default class Model {
       return arr;
     }, []);
     let result;
+    const client = await this.esorm.getClient();
     result = await client.bulk({
       refresh: true,
       body: newData,
