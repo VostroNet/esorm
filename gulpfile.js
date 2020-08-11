@@ -27,7 +27,7 @@ gulp.task("compile:publish", gulp.series("lint", () => {
         [
           "@babel/preset-env", {
             "targets": {
-              "node": "10.15.3",
+              "node": "12.18.3",
             },
             "useBuiltIns": "usage",
             "corejs": "3",
